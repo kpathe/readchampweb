@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Tracker Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Reading Tracker Dashboard</h1>
+    <button id="logoutBtn">Logout</button>
+    <div>
+        <h2>Track Your Reading</h2>
+        <input type="text" id="bookTitle" placeholder="Book Title">
+        <input type="number" id="pagesRead" placeholder="Pages Read">
+        <input type="date" id="readingDate">
+        <button id="trackBtn">Track Pages</button>
+    </div>
+    <div>
+        <h2>Your Entries</h2>
+        <ul id="entriesList"></ul>
+    </div>
+    
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        const trackBtn = document.getElementById('trackBtn');
+        const entriesList = document.getElementById('entriesList');
+
+        // Fetch and display entries
+        function fetchEntries() {
+            fetch('/entries')
+                .then(response => response.json())
+                .then(entries => {
+                    entriesList.innerHTML = '';
+                    entries.forEach(entry => {
+                        const li = document.createElement('li');
+                        li.textContent = `${entry.bookTitle} - Pages Read: ${entry.pagesRead} on ${entry.readingDate}`;
+                        const editBtn = document.createElement('button');
+                        const deleteBtn = document.createElement('button');
+                        editBtn.textContent = 'Edit';
+                        deleteBtn.textContent = 'Delete';
+                        editBtn.onclick = () => editEntry(entry);
+                        deleteBtn.onclick = () => deleteEntry(entry.id);
+                        li.appendChild(editBtn);
+                        li.appendChild(deleteBtn);
+                        entriesList.appendChild(li);
+                    });
+                });
+        }
+
+        // Track pages
+        trackBtn.onclick = () => {
+            const bookTitle = document.getElementById('bookTitle').value;
+            const pagesRead = document.getElementById('pagesRead').value;
+            const readingDate = document.getElementById('readingDate').value;
+
+            fetch('/track', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ bookTitle, pagesRead, readingDate })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                fetchEntries();
+            });
+        };
+
+        // Logout user
+        logoutBtn.onclick = () => {
+            fetch('/logout', { method: 'POST' })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = '/login'; // Redirect to login
+                    }
+                });
+        };
+
+        // Edit entry function
+        function editEntry(entry) {
+            const newPagesRead = prompt('Enter new number of pages read:', entry.pagesRead);
+            const newBookTitle = prompt('Enter new book title:', entry.bookTitle);
+            const newReadingDate = prompt('Enter new reading date:', entry.readingDate);
+            if (newPagesRead !== null && newBookTitle !== null && newReadingDate !== null) {
+                fetch(`/edit/${entry.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        bookTitle: newBookTitle,
+                        pagesRead: newPagesRead,
+                        readingDate: newReadingDate
+                    })
+                }).then(response => {
+                    if (response.ok) {
+                        alert('Entry updated successfully!');
+                        fetchEntries();
+                    }
+                });
+            }
+        }
+
+        // Delete entry function
+        function deleteEntry(entryId) {
+            if (confirm('Are you sure you want to delete this entry?')) {
+                fetch(`/delete/${entryId}`, { method: 'DELETE' })
+                    .then(response => {
+                        if (response.ok) {
+                            alert('Entry deleted successfully!');
+                            fetchEntries();
+                        }
+                    });
+            }
+        }
+
+        // Initial fetch of entries
+        fetchEntries();
+    </script>
+</body>
+</html>
